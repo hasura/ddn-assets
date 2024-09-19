@@ -9,7 +9,8 @@ import (
 )
 
 const (
-	MetadataJSON = "metadata.json"
+	MetadataJSON           = "metadata.json"
+	ConnectorPackagingJSON = "connector-packaging.json"
 )
 
 func main() {
@@ -34,6 +35,7 @@ func main() {
 	}
 
 	var connectorMetadata []Metadata
+	var connectorPackaging []ConnectorPackaging
 	err = filepath.WalkDir(registryFolder, func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
 			return err
@@ -47,6 +49,14 @@ func main() {
 			connectorMetadata = append(connectorMetadata, *metadata)
 		}
 
+		if filepath.Base(path) == ConnectorPackagingJSON {
+			cp, err := getConnectorPackaging(path)
+			if err != nil {
+				return err
+			}
+			connectorPackaging = append(connectorPackaging, *cp)
+		}
+
 		return nil
 	})
 	if err != nil {
@@ -55,9 +65,16 @@ func main() {
 		return
 	}
 
+	connectorVersions := make(map[string][]string)
+	for _, cp := range connectorPackaging {
+		slug := fmt.Sprintf("%s/%s", cp.Namespace, cp.Name)
+		connectorVersions[slug] = append(connectorVersions[slug], cp.Version)
+	}
+
 	indexJson, err := json.MarshalIndent(Index{
-		TotalConnectors: len(connectorMetadata),
-		Connectors:      connectorMetadata,
+		TotalConnectors:   len(connectorMetadata),
+		Connectors:        connectorMetadata,
+		ConnectorVersions: connectorVersions,
 	}, "", "  ")
 	if err != nil {
 		fmt.Println("error while marshalling index json")
@@ -76,8 +93,9 @@ func main() {
 }
 
 type Index struct {
-	TotalConnectors int        `json:"total_connectors"`
-	Connectors      []Metadata `json:"connectors"`
+	TotalConnectors   int                 `json:"total_connectors"`
+	Connectors        []Metadata          `json:"connectors"`
+	ConnectorVersions map[string][]string `json:"connector_versions"`
 }
 
 type Metadata struct {
@@ -108,4 +126,46 @@ func getConnectorMetadata(path string) (*Metadata, error) {
 		Name:          filepath.Base(filepath.Dir(path)),
 		LatestVersion: metadata.Overview.LatestVersion,
 	}, nil
+}
+
+type Checksum struct {
+	Type  string `json:"type"`
+	Value string `json:"value"`
+}
+
+type Source struct {
+	Hash string `json:"hash"`
+}
+
+type ConnectorPackaging struct {
+	Namespace string `json:"-"`
+	Name      string `json:"-"`
+
+	Version  string   `json:"version"`
+	URI      string   `json:"uri"`
+	Checksum Checksum `json:"checksum"`
+	Source   Source   `json:"source"`
+}
+
+func getConnectorPackaging(path string) (*ConnectorPackaging, error) {
+	// path looks like this: /some/folder/ndc-hub/registry/hasura/turso/releases/v0.1.0/connector-packaging.json
+	versionFolder := filepath.Dir(path)
+	releasesFolder := filepath.Dir(versionFolder)
+	connectorFolder := filepath.Dir(releasesFolder)
+	namespaceFolder := filepath.Dir(connectorFolder)
+
+	connectorPackagingContent, err := os.ReadFile(path)
+	if err != nil {
+		return nil, err
+	}
+
+	var connectorPackaging ConnectorPackaging
+	err = json.Unmarshal(connectorPackagingContent, &connectorPackaging)
+	if err != nil {
+		return nil, err
+	}
+
+	connectorPackaging.Namespace = filepath.Base(namespaceFolder)
+	connectorPackaging.Name = filepath.Base(connectorFolder)
+	return &connectorPackaging, nil
 }
