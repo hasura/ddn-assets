@@ -1,11 +1,17 @@
 package main
 
 import (
+	"crypto/sha256"
 	"encoding/json"
 	"fmt"
+	"io"
 	"io/fs"
+	"log"
+	"net/http"
 	"os"
 	"path/filepath"
+
+	"golang.org/x/sync/errgroup"
 )
 
 const (
@@ -71,6 +77,7 @@ func main() {
 		connectorVersions[slug] = append(connectorVersions[slug], cp.Version)
 	}
 
+	// construct index.json and write it
 	indexJson, err := json.MarshalIndent(Index{
 		TotalConnectors:   len(connectorMetadata),
 		Connectors:        connectorMetadata,
@@ -81,7 +88,6 @@ func main() {
 		os.Exit(1)
 		return
 	}
-
 	indexJsonPath := "assets/index.json"
 	err = os.WriteFile(indexJsonPath, indexJson, 0644)
 	if err != nil {
@@ -90,6 +96,81 @@ func main() {
 		return
 	}
 	fmt.Println("successfully wrote: ", indexJsonPath)
+
+	var connectorTarball errgroup.Group
+	for _, cp := range connectorPackaging[0:2] {
+		versionFolder := fmt.Sprintf("assets/%s/%s/%s", cp.Namespace, cp.Name, cp.Version)
+		err = os.MkdirAll(versionFolder, 0777)
+		if err != nil {
+			fmt.Println("error creating folder:", versionFolder, err)
+			os.Exit(1)
+		}
+
+		connectorTarball.Go(func() error {
+			var err error
+			tarballPath := filepath.Join(versionFolder, "connector-definition.tar.gz")
+
+			sha, _ := getSHAIfFileExists(tarballPath)
+			if sha == cp.Checksum.Value {
+				fmt.Println("checksum matched, so using an existing copy: ", tarballPath)
+				return nil
+			}
+
+			defer func() {
+				if err != nil {
+					fmt.Println("error while creating: ", tarballPath)
+					return
+				}
+				fmt.Println("successfully wrote: ", tarballPath)
+			}()
+
+			outFile, err := os.Create(tarballPath)
+			if err != nil {
+				return err
+			}
+			defer outFile.Close()
+
+			log.Println("starting download: ", cp.URI)
+			resp, err := http.Get(cp.URI)
+			if err != nil {
+				return err
+			}
+			defer resp.Body.Close()
+
+			if resp.StatusCode != http.StatusOK {
+				return fmt.Errorf("error downloading: status code %d", resp.StatusCode)
+			}
+
+			_, err = io.Copy(outFile, resp.Body)
+			if err != nil {
+				return err
+			}
+			return nil
+		})
+	}
+
+	err = connectorTarball.Wait()
+	if err != nil {
+		fmt.Println("error writing connector tarball", err)
+		os.Exit(1)
+	}
+}
+
+func getSHAIfFileExists(path string) (string, error) {
+	file, err := os.Open(path)
+	if err != nil {
+		return "", err
+	}
+	defer file.Close()
+
+	hash := sha256.New()
+	_, err = io.Copy(hash, file)
+	if err != nil {
+		return "", err
+	}
+
+	checksum := hash.Sum(nil)
+	return fmt.Sprintf("%x", checksum), nil
 }
 
 type Index struct {
