@@ -112,7 +112,7 @@ func main() {
 
 			sha, _ := getSHAIfFileExists(tarballPath)
 			if sha == cp.Checksum.Value {
-				fmt.Println("checksum matched, so using existing copy: ", tarballPath)
+				fmt.Println("checksum matched, so using an existing copy: ", tarballPath)
 				return nil
 			}
 
