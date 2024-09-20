@@ -71,6 +71,7 @@ func main() {
 		connectorVersions[slug] = append(connectorVersions[slug], cp.Version)
 	}
 
+	// construct index.json and write it
 	indexJson, err := json.MarshalIndent(Index{
 		TotalConnectors:   len(connectorMetadata),
 		Connectors:        connectorMetadata,
@@ -81,7 +82,6 @@ func main() {
 		os.Exit(1)
 		return
 	}
-
 	indexJsonPath := "assets/index.json"
 	err = os.WriteFile(indexJsonPath, indexJson, 0644)
 	if err != nil {
@@ -90,6 +90,15 @@ func main() {
 		return
 	}
 	fmt.Println("successfully wrote: ", indexJsonPath)
+
+	for _, cp := range connectorPackaging {
+		versionFolder := fmt.Sprintf("assets/%s/%s/%s", cp.Namespace, cp.Name, cp.Version)
+		err = os.MkdirAll(versionFolder, 0777)
+		if err != nil {
+			fmt.Println("error creating folder:", versionFolder, err)
+			os.Exit(1)
+		}
+	}
 }
 
 type Index struct {
