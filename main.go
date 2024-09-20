@@ -98,7 +98,7 @@ func main() {
 	fmt.Println("successfully wrote: ", indexJsonPath)
 
 	var connectorTarball errgroup.Group
-	for _, cp := range connectorPackaging[0:2] {
+	for _, cp := range connectorPackaging {
 		versionFolder := fmt.Sprintf("assets/%s/%s/%s", cp.Namespace, cp.Name, cp.Version)
 		err = os.MkdirAll(versionFolder, 0777)
 		if err != nil {
