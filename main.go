@@ -3,9 +3,14 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"io"
 	"io/fs"
+	"log"
+	"net/http"
 	"os"
 	"path/filepath"
+
+	"golang.org/x/sync/errgroup"
 )
 
 const (
@@ -91,6 +96,7 @@ func main() {
 	}
 	fmt.Println("successfully wrote: ", indexJsonPath)
 
+	var connectorTarball errgroup.Group
 	for _, cp := range connectorPackaging {
 		versionFolder := fmt.Sprintf("assets/%s/%s/%s", cp.Namespace, cp.Name, cp.Version)
 		err = os.MkdirAll(versionFolder, 0777)
@@ -98,6 +104,47 @@ func main() {
 			fmt.Println("error creating folder:", versionFolder, err)
 			os.Exit(1)
 		}
+
+		connectorTarball.Go(func() error {
+			var err error
+			tarballPath := filepath.Join(versionFolder, "connector-definition.tar.gz")
+			defer func() {
+				if err != nil {
+					fmt.Println("error while creating: ", tarballPath)
+					return
+				}
+				fmt.Println("successfully wrote: ", tarballPath)
+			}()
+
+			outFile, err := os.Create(tarballPath)
+			if err != nil {
+				return err
+			}
+			defer outFile.Close()
+
+			log.Println("starting download: ", cp.URI)
+			resp, err := http.Get(cp.URI)
+			if err != nil {
+				return err
+			}
+			defer resp.Body.Close()
+
+			if resp.StatusCode != http.StatusOK {
+				return fmt.Errorf("error downloading: status code %d", resp.StatusCode)
+			}
+
+			_, err = io.Copy(outFile, resp.Body)
+			if err != nil {
+				return err
+			}
+			return nil
+		})
+	}
+
+	err = connectorTarball.Wait()
+	if err != nil {
+		fmt.Println("error writing connector tarball", err)
+		os.Exit(1)
 	}
 }
 
