@@ -1,6 +1,7 @@
 package main
 
 import (
+	"crypto/sha256"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -97,7 +98,7 @@ func main() {
 	fmt.Println("successfully wrote: ", indexJsonPath)
 
 	var connectorTarball errgroup.Group
-	for _, cp := range connectorPackaging {
+	for _, cp := range connectorPackaging[0:2] {
 		versionFolder := fmt.Sprintf("assets/%s/%s/%s", cp.Namespace, cp.Name, cp.Version)
 		err = os.MkdirAll(versionFolder, 0777)
 		if err != nil {
@@ -108,6 +109,13 @@ func main() {
 		connectorTarball.Go(func() error {
 			var err error
 			tarballPath := filepath.Join(versionFolder, "connector-definition.tar.gz")
+
+			sha, _ := getSHAIfFileExists(tarballPath)
+			if sha == cp.Checksum.Value {
+				fmt.Println("checksum matched, so using existing copy: ", tarballPath)
+				return nil
+			}
+
 			defer func() {
 				if err != nil {
 					fmt.Println("error while creating: ", tarballPath)
@@ -146,6 +154,23 @@ func main() {
 		fmt.Println("error writing connector tarball", err)
 		os.Exit(1)
 	}
+}
+
+func getSHAIfFileExists(path string) (string, error) {
+	file, err := os.Open(path)
+	if err != nil {
+		return "", err
+	}
+	defer file.Close()
+
+	hash := sha256.New()
+	_, err = io.Copy(hash, file)
+	if err != nil {
+		return "", err
+	}
+
+	checksum := hash.Sum(nil)
+	return fmt.Sprintf("%x", checksum), nil
 }
 
 type Index struct {
