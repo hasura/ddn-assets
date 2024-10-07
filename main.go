@@ -53,7 +53,9 @@ func main() {
 			if err != nil {
 				return err
 			}
-			connectorMetadata = append(connectorMetadata, *metadata)
+			if metadata != nil {
+				connectorMetadata = append(connectorMetadata, *metadata)
+			}
 		}
 
 		if filepath.Base(path) == ConnectorPackagingJSON {
@@ -194,6 +196,12 @@ type Metadata struct {
 }
 
 func getConnectorMetadata(path string) (*Metadata, error) {
+	if strings.Contains(path, "aliased_connectors") {
+		// It should be safe to ignore aliased_connectors
+		// as their slug does not in the connector init process
+		return nil, nil
+	}
+
 	metadataContent, err := os.ReadFile(path)
 	if err != nil {
 		return nil, err
