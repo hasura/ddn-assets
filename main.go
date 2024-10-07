@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"golang.org/x/sync/errgroup"
 )
@@ -74,7 +75,14 @@ func main() {
 	connectorVersions := make(map[string][]string)
 	for _, cp := range connectorPackaging {
 		slug := fmt.Sprintf("%s/%s", cp.Namespace, cp.Name)
-		connectorVersions[slug] = append(connectorVersions[slug], cp.Version)
+
+		// TODO: remove following block after standardizing in ndc-hub
+		version := cp.Version
+		if !strings.HasPrefix(cp.Version, "v") {
+			version = "v" + cp.Version
+		}
+
+		connectorVersions[slug] = append(connectorVersions[slug], version)
 	}
 
 	// construct index.json and write it
