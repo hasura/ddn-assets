@@ -63,7 +63,9 @@ func main() {
 			if err != nil {
 				return err
 			}
-			connectorPackaging = append(connectorPackaging, *cp)
+			if cp != nil {
+				connectorPackaging = append(connectorPackaging, *cp)
+			}
 		}
 
 		return nil
@@ -245,6 +247,12 @@ type ConnectorPackaging struct {
 }
 
 func getConnectorPackaging(path string) (*ConnectorPackaging, error) {
+	if strings.Contains(path, "aliased_connectors") {
+		// It should be safe to ignore aliased_connectors
+		// as their slug does not in the connector init process
+		return nil, nil
+	}
+
 	// path looks like this: /some/folder/ndc-hub/registry/hasura/turso/releases/v0.1.0/connector-packaging.json
 	versionFolder := filepath.Dir(path)
 	releasesFolder := filepath.Dir(versionFolder)
@@ -260,6 +268,11 @@ func getConnectorPackaging(path string) (*ConnectorPackaging, error) {
 	err = json.Unmarshal(connectorPackagingContent, &connectorPackaging)
 	if err != nil {
 		return nil, err
+	}
+
+	// TODO: remove following block after standardizing in ndc-hub
+	if !strings.HasPrefix(connectorPackaging.Version, "v") {
+		connectorPackaging.Version = "v" + connectorPackaging.Version
 	}
 
 	connectorPackaging.Namespace = filepath.Base(namespaceFolder)
