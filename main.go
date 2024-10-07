@@ -133,7 +133,8 @@ func main() {
 					fmt.Println("error while creating: ", tarballPath)
 					return
 				}
-				fmt.Println("successfully wrote: ", tarballPath)
+				sha, _ := getSHAIfFileExists(tarballPath)
+				fmt.Printf("successfully wrote: %s (sha256: %s) \n", tarballPath, sha)
 			}()
 
 			outFile, err := os.Create(tarballPath)
