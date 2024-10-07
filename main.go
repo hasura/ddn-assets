@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"crypto/sha256"
 	"encoding/json"
 	"fmt"
@@ -12,6 +13,8 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/hasura/ddn-assets/gqldata"
+	"github.com/machinebox/graphql"
 	"golang.org/x/sync/errgroup"
 )
 
@@ -37,6 +40,31 @@ func main() {
 	}
 	if os.IsNotExist(err) {
 		fmt.Println("registry folder does not exist")
+		os.Exit(1)
+		return
+	}
+
+	gqlEndpoint := os.Getenv("HASURA_GRAPHQL_ENDPOINT")
+	if len(gqlEndpoint) == 0 {
+		fmt.Println("please set HASURA_GRAPHQL_ENDPOINT env var")
+		os.Exit(1)
+		return
+	}
+	if !strings.HasSuffix(gqlEndpoint, "/v1/graphql") {
+		gqlEndpoint = gqlEndpoint + "/v1/graphql"
+	}
+
+	gqlAdminSecret := os.Getenv("HASURA_GRAPHQL_ADMIN_SECRET")
+	if len(gqlAdminSecret) == 0 {
+		fmt.Println("please set HASURA_GRAPHQL_ADMIN_SECRET env var")
+		os.Exit(1)
+		return
+	}
+
+	gqlClient := graphql.NewClient(gqlEndpoint)
+	connectorsInDB, err := gqldata.GetConnectors(context.Background(), gqlClient, gqlAdminSecret)
+	if err != nil {
+		fmt.Println("error while getting list of onnectors", err)
 		os.Exit(1)
 		return
 	}
@@ -90,11 +118,12 @@ func main() {
 	}
 
 	// construct index.json and write it
-	indexJson, err := json.MarshalIndent(Index{
+	index := Index{
 		TotalConnectors:   len(connectorMetadata),
 		Connectors:        connectorMetadata,
 		ConnectorVersions: connectorVersions,
-	}, "", "  ")
+	}
+	indexJson, err := json.MarshalIndent(index, "", "  ")
 	if err != nil {
 		fmt.Println("error while marshalling index json")
 		os.Exit(1)
@@ -108,6 +137,47 @@ func main() {
 		return
 	}
 	fmt.Println("successfully wrote: ", indexJsonPath)
+
+	// validate index.json: check for presense of all connectors
+	hasValidIndexJSON := true
+	fmt.Printf("total number of connectors: in db = %d, in index.json = %d\n", len(connectorsInDB), index.TotalConnectors)
+	var unpresentConnectorsInHub []string
+	for _, dbc := range connectorsInDB {
+		slug := fmt.Sprintf("%s/%s", dbc.Namespace, dbc.Name)
+		if _, ok := index.ConnectorVersions[slug]; !ok {
+			unpresentConnectorsInHub = append(unpresentConnectorsInHub, slug)
+		}
+	}
+	if len(unpresentConnectorsInHub) > 0 {
+		fmt.Println("Following connectors are present in DB, but not in ndc-hub:")
+		fmt.Println(strings.Join(unpresentConnectorsInHub, "\n"))
+		hasValidIndexJSON = false
+	}
+
+	var unpresentConnectorsInDB []string
+	for _, hubc := range index.Connectors {
+		foundInDb := false
+		for _, dbc := range connectorsInDB {
+			if dbc.Namespace == hubc.Namespace && dbc.Name == hubc.Name {
+				foundInDb = true
+				break
+			}
+		}
+		if !foundInDb {
+			slug := fmt.Sprintf("%s/%s", hubc.Namespace, hubc.Name)
+			unpresentConnectorsInDB = append(unpresentConnectorsInDB, slug)
+		}
+	}
+	if len(unpresentConnectorsInDB) > 0 {
+		fmt.Println("Following connectors are present in ndc-hub, but not in the DB:")
+		fmt.Println(strings.Join(unpresentConnectorsInDB, "\n"))
+		hasValidIndexJSON = false
+	}
+
+	if !hasValidIndexJSON {
+		os.Exit(1)
+		return
+	}
 
 	var connectorTarball errgroup.Group
 	for _, cp := range connectorPackaging {
