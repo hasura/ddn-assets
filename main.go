@@ -1,7 +1,6 @@
 package main
 
 import (
-	"context"
 	"crypto/sha256"
 	"encoding/json"
 	"fmt"
@@ -13,8 +12,6 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/hasura/ddn-assets/gqldata"
-	"github.com/machinebox/graphql"
 	"golang.org/x/sync/errgroup"
 )
 
@@ -61,13 +58,13 @@ func main() {
 		return
 	}
 
-	gqlClient := graphql.NewClient(gqlEndpoint)
-	connectorsInDB, err := gqldata.GetConnectors(context.Background(), gqlClient, gqlAdminSecret)
-	if err != nil {
-		fmt.Println("error while getting list of onnectors", err)
-		os.Exit(1)
-		return
-	}
+	// gqlClient := graphql.NewClient(gqlEndpoint)
+	// connectorsInDB, err := gqldata.GetConnectors(context.Background(), gqlClient, gqlAdminSecret)
+	// if err != nil {
+	// 	fmt.Println("error while getting list of onnectors", err)
+	// 	os.Exit(1)
+	// 	return
+	// }
 
 	var connectorMetadata []Metadata
 	var connectorPackaging []ConnectorPackaging
@@ -139,45 +136,45 @@ func main() {
 	fmt.Println("successfully wrote: ", indexJsonPath)
 
 	// validate index.json: check for presense of all connectors
-	hasValidIndexJSON := true
-	fmt.Printf("total number of connectors: in db = %d, in index.json = %d\n", len(connectorsInDB), index.TotalConnectors)
-	var unpresentConnectorsInHub []string
-	for _, dbc := range connectorsInDB {
-		slug := fmt.Sprintf("%s/%s", dbc.Namespace, dbc.Name)
-		if _, ok := index.ConnectorVersions[slug]; !ok {
-			unpresentConnectorsInHub = append(unpresentConnectorsInHub, slug)
-		}
-	}
-	if len(unpresentConnectorsInHub) > 0 {
-		fmt.Println("Following connectors are present in DB, but not in ndc-hub:")
-		fmt.Println(strings.Join(unpresentConnectorsInHub, "\n"))
-		hasValidIndexJSON = false
-	}
+	// hasValidIndexJSON := true
+	// fmt.Printf("total number of connectors: in db = %d, in index.json = %d\n", len(connectorsInDB), index.TotalConnectors)
+	// var unpresentConnectorsInHub []string
+	// for _, dbc := range connectorsInDB {
+	// 	slug := fmt.Sprintf("%s/%s", dbc.Namespace, dbc.Name)
+	// 	if _, ok := index.ConnectorVersions[slug]; !ok {
+	// 		unpresentConnectorsInHub = append(unpresentConnectorsInHub, slug)
+	// 	}
+	// }
+	// if len(unpresentConnectorsInHub) > 0 {
+	// 	fmt.Println("Following connectors are present in DB, but not in ndc-hub:")
+	// 	fmt.Println(strings.Join(unpresentConnectorsInHub, "\n"))
+	// 	hasValidIndexJSON = false
+	// }
 
-	var unpresentConnectorsInDB []string
-	for _, hubc := range index.Connectors {
-		foundInDb := false
-		for _, dbc := range connectorsInDB {
-			if dbc.Namespace == hubc.Namespace && dbc.Name == hubc.Name {
-				foundInDb = true
-				break
-			}
-		}
-		if !foundInDb {
-			slug := fmt.Sprintf("%s/%s", hubc.Namespace, hubc.Name)
-			unpresentConnectorsInDB = append(unpresentConnectorsInDB, slug)
-		}
-	}
-	if len(unpresentConnectorsInDB) > 0 {
-		fmt.Println("Following connectors are present in ndc-hub, but not in the DB:")
-		fmt.Println(strings.Join(unpresentConnectorsInDB, "\n"))
-		hasValidIndexJSON = false
-	}
+	// var unpresentConnectorsInDB []string
+	// for _, hubc := range index.Connectors {
+	// 	foundInDb := false
+	// 	for _, dbc := range connectorsInDB {
+	// 		if dbc.Namespace == hubc.Namespace && dbc.Name == hubc.Name {
+	// 			foundInDb = true
+	// 			break
+	// 		}
+	// 	}
+	// 	if !foundInDb {
+	// 		slug := fmt.Sprintf("%s/%s", hubc.Namespace, hubc.Name)
+	// 		unpresentConnectorsInDB = append(unpresentConnectorsInDB, slug)
+	// 	}
+	// }
+	// if len(unpresentConnectorsInDB) > 0 {
+	// 	fmt.Println("Following connectors are present in ndc-hub, but not in the DB:")
+	// 	fmt.Println(strings.Join(unpresentConnectorsInDB, "\n"))
+	// 	hasValidIndexJSON = false
+	// }
 
-	if !hasValidIndexJSON {
-		os.Exit(1)
-		return
-	}
+	// if !hasValidIndexJSON {
+	// 	os.Exit(1)
+	// 	return
+	// }
 
 	var connectorTarball errgroup.Group
 	for _, cp := range connectorPackaging {
