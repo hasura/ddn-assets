@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"crypto/sha256"
 	"encoding/json"
 	"fmt"
@@ -10,7 +11,10 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strings"
 
+	"github.com/hasura/ddn-assets/gqldata"
+	"github.com/machinebox/graphql"
 	"golang.org/x/sync/errgroup"
 )
 
@@ -40,6 +44,38 @@ func main() {
 		return
 	}
 
+	gqlEndpoint := os.Getenv("HASURA_GRAPHQL_ENDPOINT")
+	if len(gqlEndpoint) == 0 {
+		fmt.Println("please set HASURA_GRAPHQL_ENDPOINT env var")
+		os.Exit(1)
+		return
+	}
+	if !strings.HasSuffix(gqlEndpoint, "/v1/graphql") {
+		gqlEndpoint = gqlEndpoint + "/v1/graphql"
+	}
+
+	gqlAdminSecret := os.Getenv("HASURA_GRAPHQL_ADMIN_SECRET")
+	if len(gqlAdminSecret) == 0 {
+		fmt.Println("please set HASURA_GRAPHQL_ADMIN_SECRET env var")
+		os.Exit(1)
+		return
+	}
+
+	gqlClient := graphql.NewClient(gqlEndpoint)
+	// connectorsInDB, err := gqldata.GetConnectors(context.Background(), gqlClient, gqlAdminSecret)
+	// if err != nil {
+	// 	fmt.Println("error while getting list of onnectors", err)
+	// 	os.Exit(1)
+	// 	return
+	// }
+
+	connectorVersionsInDB, err := gqldata.GetConnectorVersions(context.Background(), gqlClient, gqlAdminSecret)
+	if err != nil {
+		fmt.Println("error while getting list of connector versions", err)
+		os.Exit(1)
+		return
+	}
+
 	var connectorMetadata []Metadata
 	var connectorPackaging []ConnectorPackaging
 	err = filepath.WalkDir(registryFolder, func(path string, d fs.DirEntry, err error) error {
@@ -52,7 +88,9 @@ func main() {
 			if err != nil {
 				return err
 			}
-			connectorMetadata = append(connectorMetadata, *metadata)
+			if metadata != nil {
+				connectorMetadata = append(connectorMetadata, *metadata)
+			}
 		}
 
 		if filepath.Base(path) == ConnectorPackagingJSON {
@@ -60,7 +98,9 @@ func main() {
 			if err != nil {
 				return err
 			}
-			connectorPackaging = append(connectorPackaging, *cp)
+			if cp != nil {
+				connectorPackaging = append(connectorPackaging, *cp)
+			}
 		}
 
 		return nil
@@ -74,15 +114,23 @@ func main() {
 	connectorVersions := make(map[string][]string)
 	for _, cp := range connectorPackaging {
 		slug := fmt.Sprintf("%s/%s", cp.Namespace, cp.Name)
-		connectorVersions[slug] = append(connectorVersions[slug], cp.Version)
+
+		// TODO: remove following block after standardizing in ndc-hub
+		version := cp.Version
+		if !strings.HasPrefix(cp.Version, "v") {
+			version = "v" + cp.Version
+		}
+
+		connectorVersions[slug] = append(connectorVersions[slug], version)
 	}
 
 	// construct index.json and write it
-	indexJson, err := json.MarshalIndent(Index{
+	index := Index{
 		TotalConnectors:   len(connectorMetadata),
 		Connectors:        connectorMetadata,
 		ConnectorVersions: connectorVersions,
-	}, "", "  ")
+	}
+	indexJson, err := json.MarshalIndent(index, "", "  ")
 	if err != nil {
 		fmt.Println("error while marshalling index json")
 		os.Exit(1)
@@ -96,6 +144,74 @@ func main() {
 		return
 	}
 	fmt.Println("successfully wrote: ", indexJsonPath)
+
+	// validate index.json: check for presense of all connectors
+	// hasValidIndexJSON := true
+	// fmt.Printf("total number of connectors: in db = %d, in index.json = %d\n", len(connectorsInDB), index.TotalConnectors)
+	// var unpresentConnectorsInHub []string
+	// for _, dbc := range connectorsInDB {
+	// 	slug := fmt.Sprintf("%s/%s", dbc.Namespace, dbc.Name)
+	// 	if _, ok := index.ConnectorVersions[slug]; !ok {
+	// 		unpresentConnectorsInHub = append(unpresentConnectorsInHub, slug)
+	// 	}
+	// }
+	// if len(unpresentConnectorsInHub) > 0 {
+	// 	fmt.Println("Following connectors are present in DB, but not in ndc-hub:")
+	// 	fmt.Println(strings.Join(unpresentConnectorsInHub, "\n"))
+	// 	hasValidIndexJSON = false
+	// }
+
+	// var unpresentConnectorsInDB []string
+	// for _, hubc := range index.Connectors {
+	// 	foundInDb := false
+	// 	for _, dbc := range connectorsInDB {
+	// 		if dbc.Namespace == hubc.Namespace && dbc.Name == hubc.Name {
+	// 			foundInDb = true
+	// 			break
+	// 		}
+	// 	}
+	// 	if !foundInDb {
+	// 		slug := fmt.Sprintf("%s/%s", hubc.Namespace, hubc.Name)
+	// 		unpresentConnectorsInDB = append(unpresentConnectorsInDB, slug)
+	// 	}
+	// }
+	// if len(unpresentConnectorsInDB) > 0 {
+	// 	fmt.Println("Following connectors are present in ndc-hub, but not in the DB:")
+	// 	fmt.Println(strings.Join(unpresentConnectorsInDB, "\n"))
+	// 	hasValidIndexJSON = false
+	// }
+
+	// if !hasValidIndexJSON {
+	// 	os.Exit(1)
+	// 	return
+	// }
+
+	// validate index.json: check for presence of all connector versions
+	unfoundConnectorVersions := make(map[string][]string)
+	for _, dbcv := range connectorVersionsInDB {
+		slug := fmt.Sprintf("%s/%s", dbcv.Namespace, dbcv.Name)
+		foundVersion := false
+		for _, v := range index.ConnectorVersions[slug] {
+			if v == dbcv.Version {
+				foundVersion = true
+				break
+			}
+		}
+		if !foundVersion {
+			unfoundConnectorVersions[slug] = append(unfoundConnectorVersions[slug], dbcv.Version)
+		}
+	}
+
+	if len(unfoundConnectorVersions) > 0 {
+		fmt.Println("Following connector versions are found in DB but not in the ndc-hub")
+		count := 1
+		for k, v := range unfoundConnectorVersions {
+			fmt.Printf("%d. %s %+v\n", count, k, v)
+			count++
+		}
+		os.Exit(1)
+		return
+	}
 
 	var connectorTarball errgroup.Group
 	for _, cp := range connectorPackaging {
@@ -121,7 +237,8 @@ func main() {
 					fmt.Println("error while creating: ", tarballPath)
 					return
 				}
-				fmt.Println("successfully wrote: ", tarballPath)
+				sha, _ := getSHAIfFileExists(tarballPath)
+				fmt.Printf("successfully wrote: %s (sha256: %s) \n", tarballPath, sha)
 			}()
 
 			outFile, err := os.Create(tarballPath)
@@ -186,6 +303,12 @@ type Metadata struct {
 }
 
 func getConnectorMetadata(path string) (*Metadata, error) {
+	if strings.Contains(path, "aliased_connectors") {
+		// It should be safe to ignore aliased_connectors
+		// as their slug does not in the connector init process
+		return nil, nil
+	}
+
 	metadataContent, err := os.ReadFile(path)
 	if err != nil {
 		return nil, err
@@ -229,6 +352,12 @@ type ConnectorPackaging struct {
 }
 
 func getConnectorPackaging(path string) (*ConnectorPackaging, error) {
+	if strings.Contains(path, "aliased_connectors") {
+		// It should be safe to ignore aliased_connectors
+		// as their slug does not in the connector init process
+		return nil, nil
+	}
+
 	// path looks like this: /some/folder/ndc-hub/registry/hasura/turso/releases/v0.1.0/connector-packaging.json
 	versionFolder := filepath.Dir(path)
 	releasesFolder := filepath.Dir(versionFolder)
@@ -244,6 +373,11 @@ func getConnectorPackaging(path string) (*ConnectorPackaging, error) {
 	err = json.Unmarshal(connectorPackagingContent, &connectorPackaging)
 	if err != nil {
 		return nil, err
+	}
+
+	// TODO: remove following block after standardizing in ndc-hub
+	if !strings.HasPrefix(connectorPackaging.Version, "v") {
+		connectorPackaging.Version = "v" + connectorPackaging.Version
 	}
 
 	connectorPackaging.Namespace = filepath.Base(namespaceFolder)
