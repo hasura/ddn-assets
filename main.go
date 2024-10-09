@@ -14,6 +14,7 @@ import (
 	"strings"
 
 	"github.com/hasura/ddn-assets/gqldata"
+	"github.com/hasura/ddn-assets/ndchub"
 	"github.com/machinebox/graphql"
 	"golang.org/x/sync/errgroup"
 )
@@ -77,7 +78,7 @@ func main() {
 	}
 
 	var connectorMetadata []Metadata
-	var connectorPackaging []ConnectorPackaging
+	var connectorPackaging []ndchub.ConnectorPackaging
 	err = filepath.WalkDir(registryFolder, func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
 			return err
@@ -332,26 +333,7 @@ func getConnectorMetadata(path string) (*Metadata, error) {
 	}, nil
 }
 
-type Checksum struct {
-	Type  string `json:"type"`
-	Value string `json:"value"`
-}
-
-type Source struct {
-	Hash string `json:"hash"`
-}
-
-type ConnectorPackaging struct {
-	Namespace string `json:"-"`
-	Name      string `json:"-"`
-
-	Version  string   `json:"version"`
-	URI      string   `json:"uri"`
-	Checksum Checksum `json:"checksum"`
-	Source   Source   `json:"source"`
-}
-
-func getConnectorPackaging(path string) (*ConnectorPackaging, error) {
+func getConnectorPackaging(path string) (*ndchub.ConnectorPackaging, error) {
 	if strings.Contains(path, "aliased_connectors") {
 		// It should be safe to ignore aliased_connectors
 		// as their slug does not in the connector init process
@@ -369,7 +351,7 @@ func getConnectorPackaging(path string) (*ConnectorPackaging, error) {
 		return nil, err
 	}
 
-	var connectorPackaging ConnectorPackaging
+	var connectorPackaging ndchub.ConnectorPackaging
 	err = json.Unmarshal(connectorPackagingContent, &connectorPackaging)
 	if err != nil {
 		return nil, err
