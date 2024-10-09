@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"crypto/sha256"
 	"encoding/json"
 	"fmt"
@@ -12,6 +13,8 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/hasura/ddn-assets/gqldata"
+	"github.com/machinebox/graphql"
 	"golang.org/x/sync/errgroup"
 )
 
@@ -58,13 +61,20 @@ func main() {
 		return
 	}
 
-	// gqlClient := graphql.NewClient(gqlEndpoint)
+	gqlClient := graphql.NewClient(gqlEndpoint)
 	// connectorsInDB, err := gqldata.GetConnectors(context.Background(), gqlClient, gqlAdminSecret)
 	// if err != nil {
 	// 	fmt.Println("error while getting list of onnectors", err)
 	// 	os.Exit(1)
 	// 	return
 	// }
+
+	connectorVersionsInDB, err := gqldata.GetConnectorVersions(context.Background(), gqlClient, gqlAdminSecret)
+	if err != nil {
+		fmt.Println("error while getting list of connector versions", err)
+		os.Exit(1)
+		return
+	}
 
 	var connectorMetadata []Metadata
 	var connectorPackaging []ConnectorPackaging
@@ -175,6 +185,33 @@ func main() {
 	// 	os.Exit(1)
 	// 	return
 	// }
+
+	// validate index.json: check for presence of all connector versions
+	unfoundConnectorVersions := make(map[string][]string)
+	for _, dbcv := range connectorVersionsInDB {
+		slug := fmt.Sprintf("%s/%s", dbcv.Namespace, dbcv.Name)
+		foundVersion := false
+		for _, v := range index.ConnectorVersions[slug] {
+			if v == dbcv.Version {
+				foundVersion = true
+				break
+			}
+		}
+		if !foundVersion {
+			unfoundConnectorVersions[slug] = append(unfoundConnectorVersions[slug], dbcv.Version)
+		}
+	}
+
+	if len(unfoundConnectorVersions) > 0 {
+		fmt.Println("Following connector versions are found in DB but not in the ndc-hub")
+		count := 1
+		for k, v := range unfoundConnectorVersions {
+			fmt.Printf("%d. %s %+v\n", count, k, v)
+			count++
+		}
+		os.Exit(1)
+		return
+	}
 
 	var connectorTarball errgroup.Group
 	for _, cp := range connectorPackaging {
