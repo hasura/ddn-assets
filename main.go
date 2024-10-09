@@ -111,14 +111,7 @@ func main() {
 	connectorVersions := make(map[string][]string)
 	for _, cp := range connectorPackaging {
 		slug := fmt.Sprintf("%s/%s", cp.Namespace, cp.Name)
-
-		// TODO: remove following block after standardizing in ndc-hub
-		version := cp.Version
-		if !strings.HasPrefix(cp.Version, "v") {
-			version = "v" + cp.Version
-		}
-
-		connectorVersions[slug] = append(connectorVersions[slug], version)
+		connectorVersions[slug] = append(connectorVersions[slug], cp.Version)
 	}
 
 	// construct index.json and write it
@@ -270,31 +263,6 @@ func main() {
 		fmt.Println("error writing connector tarball", err)
 		os.Exit(1)
 	}
-
-	fmt.Println("inconsistent versioning in connector-packaging files")
-	count := 1
-	for path, cp := range inconsistentVersionInConnPackagingFiles {
-		fmt.Println(count, path, cp.Version)
-
-		contents, err := json.MarshalIndent(cp, "", "  ")
-		if err != nil {
-			fmt.Println("error marshalling connector packaging", err)
-			os.Exit(1)
-		}
-
-		info, err := os.Stat(path)
-		if err != nil {
-			fmt.Println("error stat", err)
-			os.Exit(1)
-		}
-
-		err = os.WriteFile(path, contents, info.Mode())
-		if err != nil {
-			fmt.Println("error writing file", err)
-			os.Exit(1)
-		}
-		count++
-	}
 }
 
 func getSHAIfFileExists(path string) (string, error) {
@@ -356,8 +324,6 @@ func getConnectorMetadata(path string) (*Metadata, error) {
 	}, nil
 }
 
-var inconsistentVersionInConnPackagingFiles = map[string]ndchub.ConnectorPackaging{}
-
 func getConnectorPackaging(path string) (*ndchub.ConnectorPackaging, error) {
 	if strings.Contains(path, "aliased_connectors") {
 		// It should be safe to ignore aliased_connectors
@@ -384,10 +350,5 @@ func getConnectorPackaging(path string) (*ndchub.ConnectorPackaging, error) {
 	connectorPackaging.Namespace = filepath.Base(namespaceFolder)
 	connectorPackaging.Name = filepath.Base(connectorFolder)
 
-	// TODO: remove following block after standardizing in ndc-hub
-	if !strings.HasPrefix(connectorPackaging.Version, "v") {
-		connectorPackaging.Version = "v" + connectorPackaging.Version
-		inconsistentVersionInConnPackagingFiles[path] = connectorPackaging
-	}
 	return &connectorPackaging, nil
 }
