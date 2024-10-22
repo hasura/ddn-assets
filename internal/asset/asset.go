@@ -15,6 +15,10 @@ var (
 	IndexJsonPath = filepath.Join(AssetFolderPath, "index.json")
 )
 
+func VersionFolder(namespace, name, version string) string {
+	return filepath.Join(AssetFolderPath, namespace, name, version)
+}
+
 type Index struct {
 	TotalConnectors   int                 `json:"total_connectors"`
 	Connectors        []Connector         `json:"connectors"`

@@ -60,7 +60,7 @@ var generateCmd = &cobra.Command{
 			}
 
 			if filepath.Base(path) == ndchub.ConnectorPackagingJSON {
-				cp, err := getConnectorPackaging(path)
+				cp, err := ndchub.GetConnectorPackaging(path)
 				if err != nil {
 					return err
 				}
@@ -96,7 +96,7 @@ var generateCmd = &cobra.Command{
 
 		var connectorTarball errgroup.Group
 		for _, cp := range connectorPackaging {
-			versionFolder := fmt.Sprintf("assets/%s/%s/%s", cp.Namespace, cp.Name, cp.Version)
+			versionFolder := asset.VersionFolder(cp.Namespace, cp.Name, cp.Version)
 			err = os.MkdirAll(versionFolder, 0777)
 			if err != nil {
 				fmt.Println("error creating folder:", versionFolder, err)
@@ -200,33 +200,4 @@ func getConnectorMetadata(path string) (*asset.Connector, error) {
 		Name:          filepath.Base(filepath.Dir(path)),
 		LatestVersion: metadata.Overview.LatestVersion,
 	}, nil
-}
-
-func getConnectorPackaging(path string) (*ndchub.ConnectorPackaging, error) {
-	if strings.Contains(path, "aliased_connectors") {
-		// It should be safe to ignore aliased_connectors
-		// as their slug does not in the connector init process
-		return nil, nil
-	}
-
-	// path looks like this: /some/folder/ndc-hub/registry/hasura/turso/releases/v0.1.0/connector-packaging.json
-	versionFolder := filepath.Dir(path)
-	releasesFolder := filepath.Dir(versionFolder)
-	connectorFolder := filepath.Dir(releasesFolder)
-	namespaceFolder := filepath.Dir(connectorFolder)
-
-	connectorPackagingContent, err := os.ReadFile(path)
-	if err != nil {
-		return nil, err
-	}
-
-	var connectorPackaging ndchub.ConnectorPackaging
-	err = json.Unmarshal(connectorPackagingContent, &connectorPackaging)
-	if err != nil {
-		return nil, err
-	}
-	connectorPackaging.Namespace = filepath.Base(namespaceFolder)
-	connectorPackaging.Name = filepath.Base(connectorFolder)
-
-	return &connectorPackaging, nil
 }
