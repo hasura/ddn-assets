@@ -1,5 +1,10 @@
 package ndchub
 
+const (
+	MetadataJSON           = "metadata.json"
+	ConnectorPackagingJSON = "connector-packaging.json"
+)
+
 type Checksum struct {
 	Type  string `json:"type"`
 	Value string `json:"value"`

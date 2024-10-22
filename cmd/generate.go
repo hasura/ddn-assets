@@ -12,14 +12,10 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/hasura/ddn-assets/internal/asset"
 	"github.com/hasura/ddn-assets/internal/ndchub"
 	"github.com/spf13/cobra"
 	"golang.org/x/sync/errgroup"
-)
-
-const (
-	MetadataJSON           = "metadata.json"
-	ConnectorPackagingJSON = "connector-packaging.json"
 )
 
 var generateCmd = &cobra.Command{
@@ -46,24 +42,24 @@ var generateCmd = &cobra.Command{
 			return
 		}
 
-		var connectorMetadata []Metadata
+		var connectors []asset.Connector
 		var connectorPackaging []ndchub.ConnectorPackaging
 		err = filepath.WalkDir(registryFolder, func(path string, d fs.DirEntry, err error) error {
 			if err != nil {
 				return err
 			}
 
-			if filepath.Base(path) == MetadataJSON {
+			if filepath.Base(path) == ndchub.MetadataJSON {
 				metadata, err := getConnectorMetadata(path)
 				if err != nil {
 					return err
 				}
 				if metadata != nil {
-					connectorMetadata = append(connectorMetadata, *metadata)
+					connectors = append(connectors, *metadata)
 				}
 			}
 
-			if filepath.Base(path) == ConnectorPackagingJSON {
+			if filepath.Base(path) == ndchub.ConnectorPackagingJSON {
 				cp, err := getConnectorPackaging(path)
 				if err != nil {
 					return err
@@ -87,26 +83,16 @@ var generateCmd = &cobra.Command{
 			connectorVersions[slug] = append(connectorVersions[slug], cp.Version)
 		}
 
-		// construct index.json and write it
-		index := Index{
-			TotalConnectors:   len(connectorMetadata),
-			Connectors:        connectorMetadata,
+		err = asset.WriteIndexJSON(&asset.Index{
+			TotalConnectors:   len(connectors),
+			Connectors:        connectors,
 			ConnectorVersions: connectorVersions,
-		}
-		indexJson, err := json.MarshalIndent(index, "", "  ")
+		})
 		if err != nil {
-			fmt.Println("error while marshalling index json")
+			fmt.Println("error writing index.json", err)
 			os.Exit(1)
 			return
 		}
-		indexJsonPath := "assets/index.json"
-		err = os.WriteFile(indexJsonPath, indexJson, 0644)
-		if err != nil {
-			fmt.Println("error writing", indexJsonPath, err)
-			os.Exit(1)
-			return
-		}
-		fmt.Println("successfully wrote: ", indexJsonPath)
 
 		var connectorTarball errgroup.Group
 		for _, cp := range connectorPackaging {
@@ -186,19 +172,7 @@ func getSHAIfFileExists(path string) (string, error) {
 	return fmt.Sprintf("%x", checksum), nil
 }
 
-type Index struct {
-	TotalConnectors   int                 `json:"total_connectors"`
-	Connectors        []Metadata          `json:"connectors"`
-	ConnectorVersions map[string][]string `json:"connector_versions"`
-}
-
-type Metadata struct {
-	Namespace     string `json:"namespace"`
-	Name          string `json:"name"`
-	LatestVersion string `json:"latest_version"`
-}
-
-func getConnectorMetadata(path string) (*Metadata, error) {
+func getConnectorMetadata(path string) (*asset.Connector, error) {
 	if strings.Contains(path, "aliased_connectors") {
 		// It should be safe to ignore aliased_connectors
 		// as their slug does not in the connector init process
@@ -221,7 +195,7 @@ func getConnectorMetadata(path string) (*Metadata, error) {
 		return nil, err
 	}
 
-	return &Metadata{
+	return &asset.Connector{
 		Namespace:     metadata.Overview.Namespace,
 		Name:          filepath.Base(filepath.Dir(path)),
 		LatestVersion: metadata.Overview.LatestVersion,
