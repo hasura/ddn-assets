@@ -43,8 +43,8 @@ var validateCmd = &cobra.Command{
 		// 	return
 		// }
 
-		// TODO: enable after fixing neo4j and sendgrid
-		// validate index.json: check for presense of all connectors
+		// // TODO: enable after fixing neo4j and sendgrid
+		// // validate index.json: check for presense of all connectors
 		// hasValidIndexJSON := true
 		// fmt.Printf("total number of connectors: in db = %d, in index.json = %d\n", len(connectorsInDB), index.TotalConnectors)
 		// var unpresentConnectorsInHub []string

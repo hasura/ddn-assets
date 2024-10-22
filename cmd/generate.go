@@ -12,7 +12,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/hasura/ddn-assets/ndchub"
+	"github.com/hasura/ddn-assets/internal/ndchub"
 	"github.com/spf13/cobra"
 	"golang.org/x/sync/errgroup"
 )
