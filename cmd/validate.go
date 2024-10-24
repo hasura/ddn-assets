@@ -1,10 +1,6 @@
 package cmd
 
 import (
-	"fmt"
-	"os"
-	"strings"
-
 	"github.com/spf13/cobra"
 )
 
@@ -12,22 +8,22 @@ var validateCmd = &cobra.Command{
 	Use:   "validate",
 	Short: "Validate assets",
 	Run: func(cmd *cobra.Command, args []string) {
-		gqlEndpoint := os.Getenv("HASURA_GRAPHQL_ENDPOINT")
-		if len(gqlEndpoint) == 0 {
-			fmt.Println("please set HASURA_GRAPHQL_ENDPOINT env var")
-			os.Exit(1)
-			return
-		}
-		if !strings.HasSuffix(gqlEndpoint, "/v1/graphql") {
-			gqlEndpoint = gqlEndpoint + "/v1/graphql"
-		}
+		// gqlEndpoint := os.Getenv("HASURA_GRAPHQL_ENDPOINT")
+		// if len(gqlEndpoint) == 0 {
+		// 	fmt.Println("please set HASURA_GRAPHQL_ENDPOINT env var")
+		// 	os.Exit(1)
+		// 	return
+		// }
+		// if !strings.HasSuffix(gqlEndpoint, "/v1/graphql") {
+		// 	gqlEndpoint = gqlEndpoint + "/v1/graphql"
+		// }
 
-		gqlAdminSecret := os.Getenv("HASURA_GRAPHQL_ADMIN_SECRET")
-		if len(gqlAdminSecret) == 0 {
-			fmt.Println("please set HASURA_GRAPHQL_ADMIN_SECRET env var")
-			os.Exit(1)
-			return
-		}
+		// gqlAdminSecret := os.Getenv("HASURA_GRAPHQL_ADMIN_SECRET")
+		// if len(gqlAdminSecret) == 0 {
+		// 	fmt.Println("please set HASURA_GRAPHQL_ADMIN_SECRET env var")
+		// 	os.Exit(1)
+		// 	return
+		// }
 
 		// gqlClient := graphql.NewClient(gqlEndpoint)
 		// connectorsInDB, err := gqldata.GetConnectors(context.Background(), gqlClient, gqlAdminSecret)
