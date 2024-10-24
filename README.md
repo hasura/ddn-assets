@@ -1,5 +1,7 @@
 # ddn-assets
 
+[![golangci-lint](https://github.com/hasura/ddn-assets/actions/workflows/golangci-lint.yaml/badge.svg?branch=main)](https://github.com/hasura/ddn-assets/actions/workflows/golangci-lint.yaml)
+
 DDN asset management tool. This tool takes [ndc-hub](https://github.com/hasura/ndc-hub) as the source of information and produces assets for usage in Hasura DDN.
 
 ## Usage
