@@ -8,6 +8,7 @@ func TestParseConnectorMetadata(t *testing.T) {
 		RawYAML  []byte
 		Expected *ConnectorMetadataYAML
 	}{
+		// TODO: add more test cases to cover all CLIPluginType
 		{
 			Name: "Binary CLI plugin",
 			RawYAML: []byte(

@@ -26,13 +26,7 @@ func (cmy *ConnectorMetadataYAML) UnmarshalYAML(value *yaml.Node) error {
 	}
 
 	cmy.Version = temp.Version
-
-	plgType := temp.CLIPlugin.Type
-	if !plgType.Valid() {
-		plgType = Binary
-	}
-
-	switch plgType {
+	switch temp.CLIPlugin.Type {
 	case Docker:
 		cmy.CLIPlugin = &temp.CLIPlugin.DockerCLIPluginDefinition
 	case BinaryInline:
@@ -53,15 +47,6 @@ var (
 	BinaryInline CLIPluginType = "BinaryInline"
 	Docker       CLIPluginType = "Docker"
 )
-
-func (c CLIPluginType) Valid() bool {
-	switch c {
-	case Binary, BinaryInline, Docker:
-		return true
-	default:
-		return false
-	}
-}
 
 type CLIPluginDefinition interface {
 	GetType() CLIPluginType
