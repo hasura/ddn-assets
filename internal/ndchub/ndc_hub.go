@@ -1,6 +1,8 @@
 package ndchub
 
 import (
+	"archive/tar"
+	"compress/gzip"
 	"crypto/sha256"
 	"encoding/json"
 	"fmt"
@@ -71,7 +73,7 @@ func GetConnectorPackaging(path string) (*ConnectorPackaging, error) {
 func DownloadConnectorTarballs(connPkgs []ConnectorPackaging) error {
 	var connectorTarball errgroup.Group
 	for _, cp := range connPkgs {
-		versionFolder := asset.VersionFolder(cp.Namespace, cp.Name, cp.Version)
+		versionFolder := asset.ConnectorVersionFolderForDownload(cp.Namespace, cp.Name, cp.Version)
 		err := os.MkdirAll(versionFolder, 0777)
 		if err != nil {
 			return fmt.Errorf("error creating folder: %s %w", versionFolder, err)
@@ -79,7 +81,7 @@ func DownloadConnectorTarballs(connPkgs []ConnectorPackaging) error {
 
 		connectorTarball.Go(func() error {
 			var err error
-			tarballPath := filepath.Join(versionFolder, "connector-definition.tar.gz")
+			tarballPath := asset.ConnectorTarballDownloadPath(cp.Namespace, cp.Name, cp.Version)
 
 			sha, _ := getSHAIfFileExists(tarballPath)
 			if sha == cp.Checksum.Value {
@@ -122,6 +124,45 @@ func DownloadConnectorTarballs(connPkgs []ConnectorPackaging) error {
 	}
 
 	return connectorTarball.Wait()
+}
+
+func ExtractConnectorTarballs(connPkgs []ConnectorPackaging) error {
+	var extract errgroup.Group
+	for _, cp := range connPkgs {
+		extract.Go(func() error {
+			srcTarball := asset.ConnectorTarballDownloadPath(cp.Namespace, cp.Name, cp.Version)
+
+			file, err := os.Open(srcTarball)
+			if err != nil {
+				return fmt.Errorf("could not open file: %v", err)
+			}
+			defer file.Close()
+
+			gzReader, err := gzip.NewReader(file)
+			if err != nil {
+				return fmt.Errorf("could not create gzip reader: %v", err)
+			}
+			defer gzReader.Close()
+
+			tarReader := tar.NewReader(gzReader)
+
+			for {
+				header, err := tarReader.Next()
+				if err == io.EOF {
+					break // end of archive
+				}
+				if err != nil {
+					return fmt.Errorf("could not read tar header: %v", err)
+				}
+
+				// TODO: make use of the header
+				fmt.Println(header)
+			}
+
+			return nil
+		})
+	}
+	return extract.Wait()
 }
 
 func getSHAIfFileExists(path string) (string, error) {

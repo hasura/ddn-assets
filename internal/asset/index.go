@@ -12,11 +12,21 @@ const (
 )
 
 var (
-	IndexJsonPath = filepath.Join(AssetFolderPath, "index.json")
+	DownloadsFolderPath = filepath.Join(AssetFolderPath, "downloads")
+	ExtractsFolderPath  = filepath.Join(AssetFolderPath, "extracts")
+	IndexJsonPath       = filepath.Join(AssetFolderPath, "index.json")
 )
 
-func VersionFolder(namespace, name, version string) string {
-	return filepath.Join(AssetFolderPath, namespace, name, version)
+func ConnectorVersionFolderForDownload(namespace, name, version string) string {
+	return filepath.Join(DownloadsFolderPath, namespace, name, version)
+}
+
+func ConnectorTarballDownloadPath(namespace, name, version string) string {
+	return filepath.Join(ConnectorVersionFolderForDownload(namespace, name, version), "connector-definition.tar.gz")
+}
+
+func ConnectorVersionFolderForExtracting(namespace, name, version string) string {
+	return filepath.Join(ExtractsFolderPath, namespace, name, version)
 }
 
 type Index struct {
