@@ -93,6 +93,10 @@ var generateCmd = &cobra.Command{
 			fmt.Println("error downloading connector tarball", err)
 			os.Exit(1)
 		}
+
+		if err = ndchub.ExtractConnectorTarballs(connectorPackaging); err != nil {
+			fmt.Println("error extracting connector tarballs", err)
+		}
 	},
 }
 
