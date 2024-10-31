@@ -1,6 +1,10 @@
 package asset
 
 import (
+	"os"
+
+	"github.com/hasura/ddn-assets/internal/ndchub"
+	"golang.org/x/sync/errgroup"
 	"gopkg.in/yaml.v3"
 )
 
@@ -93,6 +97,30 @@ func ParseConnectorMetadata(data []byte) (*ConnectorMetadataYAML, error) {
 	return &connMetadata, nil
 }
 
-func TransformCLIPlugin(cmy *ConnectorMetadataYAML) error {
-	return nil
+func ApplyCLIPluginTransform(connPkgs []ndchub.ConnectorPackaging) error {
+	var transform errgroup.Group
+	for _, cp := range connPkgs {
+		transform.Go(func() error {
+			connMetadataFilePath := ConnectorVersionFolderForExtracting(cp.Namespace, cp.Name, cp.Version)
+
+			data, err := os.ReadFile(connMetadataFilePath)
+			if err != nil {
+				return err
+			}
+
+			cmy, err := ParseConnectorMetadata(data)
+			if err != nil {
+				return nil
+			}
+
+			if cliPlugin, ok := cmy.CLIPlugin.(*BinaryInlineCLIPluginDefinition); ok {
+				for range cliPlugin.Platforms {
+
+				}
+			}
+
+			return nil
+		})
+	}
+	return transform.Wait()
 }

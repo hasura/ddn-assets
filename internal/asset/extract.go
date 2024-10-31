@@ -1,4 +1,4 @@
-package ndchub
+package asset
 
 import (
 	"archive/tar"
@@ -8,22 +8,22 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/hasura/ddn-assets/internal/asset"
+	"github.com/hasura/ddn-assets/internal/ndchub"
 	"golang.org/x/sync/errgroup"
 )
 
-func ExtractConnectorTarballs(connPkgs []ConnectorPackaging) error {
+func ExtractConnectorTarballs(connPkgs []ndchub.ConnectorPackaging) error {
 	var extract errgroup.Group
 	for _, cp := range connPkgs {
 		extract.Go(func() error {
-			srcTarball := asset.ConnectorTarballDownloadPath(cp.Namespace, cp.Name, cp.Version)
+			srcTarball := ConnectorTarballDownloadPath(cp.Namespace, cp.Name, cp.Version)
 			file, err := os.Open(srcTarball)
 			if err != nil {
 				return fmt.Errorf("could not open file: %v", err)
 			}
 			defer file.Close()
 
-			destFolder := asset.ConnectorVersionFolderForExtracting(cp.Namespace, cp.Name, cp.Version)
+			destFolder := ConnectorVersionFolderForExtracting(cp.Namespace, cp.Name, cp.Version)
 			err = os.MkdirAll(destFolder, 0777)
 			if err != nil {
 				return fmt.Errorf("error creating folder: %s %w", destFolder, err)

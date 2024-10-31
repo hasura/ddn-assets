@@ -17,12 +17,12 @@ var (
 	IndexJsonPath       = filepath.Join(AssetFolderPath, "index.json")
 )
 
-func ConnectorVersionFolderForDownload(namespace, name, version string) string {
+func connectorVersionFolderForDownload(namespace, name, version string) string {
 	return filepath.Join(DownloadsFolderPath, namespace, name, version)
 }
 
 func ConnectorTarballDownloadPath(namespace, name, version string) string {
-	return filepath.Join(ConnectorVersionFolderForDownload(namespace, name, version), "connector-definition.tar.gz")
+	return filepath.Join(connectorVersionFolderForDownload(namespace, name, version), "connector-definition.tar.gz")
 }
 
 func ConnectorVersionFolderForExtracting(namespace, name, version string) string {

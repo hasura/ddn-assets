@@ -1,4 +1,4 @@
-package ndchub
+package asset
 
 import (
 	"crypto/sha256"
@@ -8,14 +8,14 @@ import (
 	"net/http"
 	"os"
 
-	"github.com/hasura/ddn-assets/internal/asset"
+	"github.com/hasura/ddn-assets/internal/ndchub"
 	"golang.org/x/sync/errgroup"
 )
 
-func DownloadConnectorTarballs(connPkgs []ConnectorPackaging) error {
+func DownloadConnectorTarballs(connPkgs []ndchub.ConnectorPackaging) error {
 	var connectorTarball errgroup.Group
 	for _, cp := range connPkgs {
-		versionFolder := asset.ConnectorVersionFolderForDownload(cp.Namespace, cp.Name, cp.Version)
+		versionFolder := connectorVersionFolderForDownload(cp.Namespace, cp.Name, cp.Version)
 		err := os.MkdirAll(versionFolder, 0777)
 		if err != nil {
 			return fmt.Errorf("error creating folder: %s %w", versionFolder, err)
@@ -23,7 +23,7 @@ func DownloadConnectorTarballs(connPkgs []ConnectorPackaging) error {
 
 		connectorTarball.Go(func() error {
 			var err error
-			tarballPath := asset.ConnectorTarballDownloadPath(cp.Namespace, cp.Name, cp.Version)
+			tarballPath := ConnectorTarballDownloadPath(cp.Namespace, cp.Name, cp.Version)
 
 			sha, _ := getSHAIfFileExists(tarballPath)
 			if sha == cp.Checksum.Value {
