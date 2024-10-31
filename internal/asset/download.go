@@ -23,7 +23,7 @@ func DownloadConnectorTarballs(connPkgs []ndchub.ConnectorPackaging) error {
 
 		connectorTarball.Go(func() error {
 			var err error
-			tarballPath := ConnectorTarballDownloadPath(cp.Namespace, cp.Name, cp.Version)
+			tarballPath := connectorTarballDownloadPath(cp.Namespace, cp.Name, cp.Version)
 
 			sha, _ := getSHAIfFileExists(tarballPath)
 			if sha == cp.Checksum.Value {

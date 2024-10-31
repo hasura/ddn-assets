@@ -21,11 +21,11 @@ func connectorVersionFolderForDownload(namespace, name, version string) string {
 	return filepath.Join(DownloadsFolderPath, namespace, name, version)
 }
 
-func ConnectorTarballDownloadPath(namespace, name, version string) string {
+func connectorTarballDownloadPath(namespace, name, version string) string {
 	return filepath.Join(connectorVersionFolderForDownload(namespace, name, version), "connector-definition.tar.gz")
 }
 
-func ConnectorVersionFolderForExtracting(namespace, name, version string) string {
+func connectorVersionFolderForExtracting(namespace, name, version string) string {
 	return filepath.Join(ExtractsFolderPath, namespace, name, version)
 }
 

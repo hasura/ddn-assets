@@ -101,7 +101,7 @@ func ApplyCLIPluginTransform(connPkgs []ndchub.ConnectorPackaging) error {
 	var transform errgroup.Group
 	for _, cp := range connPkgs {
 		transform.Go(func() error {
-			connMetadataFilePath := ConnectorVersionFolderForExtracting(cp.Namespace, cp.Name, cp.Version)
+			connMetadataFilePath := connectorVersionFolderForExtracting(cp.Namespace, cp.Name, cp.Version)
 
 			data, err := os.ReadFile(connMetadataFilePath)
 			if err != nil {

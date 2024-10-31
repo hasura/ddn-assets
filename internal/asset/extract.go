@@ -16,14 +16,14 @@ func ExtractConnectorTarballs(connPkgs []ndchub.ConnectorPackaging) error {
 	var extract errgroup.Group
 	for _, cp := range connPkgs {
 		extract.Go(func() error {
-			srcTarball := ConnectorTarballDownloadPath(cp.Namespace, cp.Name, cp.Version)
+			srcTarball := connectorTarballDownloadPath(cp.Namespace, cp.Name, cp.Version)
 			file, err := os.Open(srcTarball)
 			if err != nil {
 				return fmt.Errorf("could not open file: %v", err)
 			}
 			defer file.Close()
 
-			destFolder := ConnectorVersionFolderForExtracting(cp.Namespace, cp.Name, cp.Version)
+			destFolder := connectorVersionFolderForExtracting(cp.Namespace, cp.Name, cp.Version)
 			err = os.MkdirAll(destFolder, 0777)
 			if err != nil {
 				return fmt.Errorf("error creating folder: %s %w", destFolder, err)
