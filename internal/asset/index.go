@@ -14,6 +14,7 @@ const (
 var (
 	DownloadsFolderPath = filepath.Join(AssetFolderPath, "downloads")
 	ExtractsFolderPath  = filepath.Join(AssetFolderPath, "extracts")
+	OutputFolderPath    = filepath.Join(AssetFolderPath, "output")
 	IndexJsonPath       = filepath.Join(AssetFolderPath, "index.json")
 )
 
@@ -27,6 +28,14 @@ func connectorTarballDownloadPath(namespace, name, version string) string {
 
 func connectorVersionFolderForExtracting(namespace, name, version string) string {
 	return filepath.Join(ExtractsFolderPath, namespace, name, version)
+}
+
+func outputConnectorVersionFolder(namespace, name, version string) string {
+	return filepath.Join(OutputFolderPath, namespace, name, version)
+}
+
+func cliPluginFolder(namespace, name, version string) string {
+	return filepath.Join(outputConnectorVersionFolder(namespace, name, version), "cli-plugins")
 }
 
 type Index struct {

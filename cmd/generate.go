@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/fs"
+	"net/url"
 	"os"
 	"path/filepath"
 	"strings"
@@ -24,8 +25,21 @@ var generateCmd = &cobra.Command{
 			return
 		}
 
+		dataServerURLString := os.Getenv("CONN_HUB_DATA_SERVER_URL")
+		if dataServerURLString == "" {
+			fmt.Println("please set a value for CONN_HUB_DATA_SERVER_URL env var")
+			os.Exit(1)
+			return
+		}
+		dataServerURL, err := url.Parse(dataServerURLString)
+		if err != nil {
+			fmt.Println("error parsing the data server URL from CONN_HUB_DATA_SERVER_URL env var", err)
+			os.Exit(1)
+			return
+		}
+
 		registryFolder := filepath.Join(ndcHubGitRepoFilePath, "registry")
-		_, err := os.Stat(registryFolder)
+		_, err = os.Stat(registryFolder)
 		if err != nil {
 			fmt.Println("error while finding the registry folder", err)
 			os.Exit(1)
@@ -96,6 +110,12 @@ var generateCmd = &cobra.Command{
 
 		if err = asset.ExtractConnectorTarballs(connectorPackaging); err != nil {
 			fmt.Println("error extracting connector tarballs", err)
+			os.Exit(1)
+		}
+
+		if err = asset.ApplyCLIPluginTransform(dataServerURL, connectorPackaging); err != nil {
+			fmt.Println("error applying the cli plugin transform", err)
+			os.Exit(1)
 		}
 	},
 }

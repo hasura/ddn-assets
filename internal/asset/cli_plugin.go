@@ -1,7 +1,9 @@
 package asset
 
 import (
+	"net/url"
 	"os"
+	"path"
 
 	"github.com/hasura/ddn-assets/internal/ndchub"
 	"golang.org/x/sync/errgroup"
@@ -88,11 +90,16 @@ type BinaryCLIPluginPlatform struct {
 	Bin      string
 }
 
-func ApplyCLIPluginTransform(connPkgs []ndchub.ConnectorPackaging) error {
+func ApplyCLIPluginTransform(dataServerBaseURL *url.URL, connPkgs []ndchub.ConnectorPackaging) error {
 	var transform errgroup.Group
 	for _, cp := range connPkgs {
 		transform.Go(func() error {
 			connMetadataFilePath := connectorVersionFolderForExtracting(cp.Namespace, cp.Name, cp.Version)
+
+			stat, err := os.Stat(connMetadataFilePath)
+			if err != nil {
+				return err
+			}
 
 			data, err := os.ReadFile(connMetadataFilePath)
 			if err != nil {
@@ -106,12 +113,30 @@ func ApplyCLIPluginTransform(connPkgs []ndchub.ConnectorPackaging) error {
 			}
 
 			if cliPlugin, ok := connMetadata.CLIPlugin.(*BinaryInlineCLIPluginDefinition); ok {
-				for range cliPlugin.Platforms {
+				for idx := 0; idx < len(cliPlugin.Platforms); idx++ {
+					p := cliPlugin.Platforms[idx]
 
+					downloadUrl, err := url.Parse(p.URI)
+					if err != nil {
+						return err
+					}
+
+					cliPlugin.Platforms[idx].URI = dataServerBaseURL.ResolveReference(&url.URL{Path: path.Join(
+						cp.Namespace,
+						cp.Name,
+						cp.Version,
+						p.Selector,
+						path.Base(downloadUrl.Path),
+					)}).String()
 				}
 			}
 
-			return nil
+			newConnMetadata, err := yaml.Marshal(connMetadata)
+			if err != nil {
+				return err
+			}
+
+			return os.WriteFile(connMetadataFilePath, newConnMetadata, stat.Mode())
 		})
 	}
 	return transform.Wait()
