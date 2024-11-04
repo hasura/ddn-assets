@@ -88,15 +88,6 @@ type BinaryCLIPluginPlatform struct {
 	Bin      string
 }
 
-func ParseConnectorMetadata(data []byte) (*ConnectorMetadataYAML, error) {
-	var connMetadata ConnectorMetadataYAML
-	err := yaml.Unmarshal(data, &connMetadata)
-	if err != nil {
-		return nil, err
-	}
-	return &connMetadata, nil
-}
-
 func ApplyCLIPluginTransform(connPkgs []ndchub.ConnectorPackaging) error {
 	var transform errgroup.Group
 	for _, cp := range connPkgs {
@@ -108,12 +99,13 @@ func ApplyCLIPluginTransform(connPkgs []ndchub.ConnectorPackaging) error {
 				return err
 			}
 
-			cmy, err := ParseConnectorMetadata(data)
+			var connMetadata ConnectorMetadataYAML
+			err = yaml.Unmarshal(data, &connMetadata)
 			if err != nil {
-				return nil
+				return err
 			}
 
-			if cliPlugin, ok := cmy.CLIPlugin.(*BinaryInlineCLIPluginDefinition); ok {
+			if cliPlugin, ok := connMetadata.CLIPlugin.(*BinaryInlineCLIPluginDefinition); ok {
 				for range cliPlugin.Platforms {
 
 				}

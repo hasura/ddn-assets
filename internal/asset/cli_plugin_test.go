@@ -1,6 +1,10 @@
 package asset
 
-import "testing"
+import (
+	"testing"
+
+	"gopkg.in/yaml.v3"
+)
 
 func TestParseConnectorMetadata(t *testing.T) {
 	tt := []struct {
@@ -30,7 +34,8 @@ cliPlugin:
 
 	for _, tc := range tt {
 		t.Run(tc.Name, func(t *testing.T) {
-			connMetadata, err := ParseConnectorMetadata(tc.RawYAML)
+			connMetadata := new(ConnectorMetadataYAML)
+			err := yaml.Unmarshal(tc.RawYAML, &connMetadata)
 			if err != nil {
 				t.Error(err)
 				return
