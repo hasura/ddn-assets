@@ -14,7 +14,7 @@ func TestParseConnectorMetadata(t *testing.T) {
 	}{
 		// TODO: add more test cases to cover all CLIPluginType
 		{
-			Name: "Binary CLI plugin",
+			Name: "Minimal CLI Plugin section",
 			RawYAML: []byte(
 				`
 version: v2
