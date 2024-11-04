@@ -26,7 +26,7 @@ func connectorTarballDownloadPath(namespace, name, version string) string {
 	return filepath.Join(connectorVersionFolderForDownload(namespace, name, version), "connector-definition.tar.gz")
 }
 
-func connectorVersionFolderForExtracting(namespace, name, version string) string {
+func extractedConnectorVersionFolder(namespace, name, version string) string {
 	return filepath.Join(ExtractsFolderPath, namespace, name, version)
 }
 

@@ -4,6 +4,7 @@ import (
 	"net/url"
 	"os"
 	"path"
+	"path/filepath"
 
 	"github.com/hasura/ddn-assets/internal/ndchub"
 	"golang.org/x/sync/errgroup"
@@ -91,10 +92,12 @@ type BinaryCLIPluginPlatform struct {
 }
 
 func ApplyCLIPluginTransform(dataServerBaseURL *url.URL, connPkgs []ndchub.ConnectorPackaging) error {
+	// TODO: remove after testing
+	return nil
 	var transform errgroup.Group
 	for _, cp := range connPkgs {
 		transform.Go(func() error {
-			connMetadataFilePath := connectorVersionFolderForExtracting(cp.Namespace, cp.Name, cp.Version)
+			connMetadataFilePath := extractedConnectorVersionFolder(cp.Namespace, cp.Name, cp.Version)
 
 			stat, err := os.Stat(connMetadataFilePath)
 			if err != nil {
@@ -140,4 +143,51 @@ func ApplyCLIPluginTransform(dataServerBaseURL *url.URL, connPkgs []ndchub.Conne
 		})
 	}
 	return transform.Wait()
+}
+
+func StoreCLIPluginFiles(connPkgs []ndchub.ConnectorPackaging) error {
+	var download errgroup.Group
+	for _, cp := range connPkgs {
+		download.Go(func() error {
+			connMetadataFilePath := filepath.Join(
+				extractedConnectorVersionFolder(cp.Namespace, cp.Name, cp.Version),
+				".hasura-connector", "connector-metadata.yaml",
+			)
+
+			data, err := os.ReadFile(connMetadataFilePath)
+			if err != nil {
+				return err
+			}
+
+			var connMetadata ConnectorMetadataYAML
+			err = yaml.Unmarshal(data, &connMetadata)
+			if err != nil {
+				return err
+			}
+
+			if cliPlugin, ok := connMetadata.CLIPlugin.(*BinaryInlineCLIPluginDefinition); ok {
+				var cliPluginDownload errgroup.Group
+				for _, p := range cliPlugin.Platforms {
+					cliPluginDownload.Go(func() error {
+						downloadUrl, err := url.Parse(p.URI)
+						if err != nil {
+							return err
+						}
+
+						return downloadFile(
+							p.URI,
+							filepath.Join(
+								cliPluginFolder(cp.Namespace, cp.Name, cp.Version),
+								p.Selector, path.Base(downloadUrl.Path),
+							),
+							p.SHA256,
+						)
+					})
+				}
+			}
+
+			return nil
+		})
+	}
+	return download.Wait()
 }

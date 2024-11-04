@@ -23,7 +23,7 @@ func ExtractConnectorTarballs(connPkgs []ndchub.ConnectorPackaging) error {
 			}
 			defer file.Close()
 
-			destFolder := connectorVersionFolderForExtracting(cp.Namespace, cp.Name, cp.Version)
+			destFolder := extractedConnectorVersionFolder(cp.Namespace, cp.Name, cp.Version)
 			err = os.MkdirAll(destFolder, 0777)
 			if err != nil {
 				return fmt.Errorf("error creating folder: %s %w", destFolder, err)

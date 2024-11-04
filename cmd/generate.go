@@ -113,8 +113,13 @@ var generateCmd = &cobra.Command{
 			os.Exit(1)
 		}
 
+		if err = asset.StoreCLIPluginFiles(connectorPackaging); err != nil {
+			fmt.Println("error downloading the cli plugin files", err)
+			os.Exit(1)
+		}
+
 		if err = asset.ApplyCLIPluginTransform(dataServerURL, connectorPackaging); err != nil {
-			fmt.Println("error applying the cli plugin transform", err)
+			fmt.Println("error applying cli plugin transforms", err)
 			os.Exit(1)
 		}
 	},

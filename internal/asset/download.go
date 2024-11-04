@@ -25,12 +25,6 @@ func DownloadConnectorTarballs(connPkgs []ndchub.ConnectorPackaging) error {
 			var err error
 			tarballPath := connectorTarballDownloadPath(cp.Namespace, cp.Name, cp.Version)
 
-			sha, _ := getSHAIfFileExists(tarballPath)
-			if sha == cp.Checksum.Value {
-				fmt.Println("checksum matched, so using an existing copy: ", tarballPath)
-				return nil
-			}
-
 			defer func() {
 				if err != nil {
 					fmt.Println("error while creating: ", tarballPath)
@@ -40,28 +34,7 @@ func DownloadConnectorTarballs(connPkgs []ndchub.ConnectorPackaging) error {
 				fmt.Printf("successfully wrote: %s (sha256: %s) \n", tarballPath, sha)
 			}()
 
-			outFile, err := os.Create(tarballPath)
-			if err != nil {
-				return err
-			}
-			defer outFile.Close()
-
-			log.Println("starting download: ", cp.URI)
-			resp, err := http.Get(cp.URI)
-			if err != nil {
-				return err
-			}
-			defer resp.Body.Close()
-
-			if resp.StatusCode != http.StatusOK {
-				return fmt.Errorf("error downloading: status code %d", resp.StatusCode)
-			}
-
-			_, err = io.Copy(outFile, resp.Body)
-			if err != nil {
-				return err
-			}
-			return nil
+			return downloadFile(cp.URI, tarballPath, cp.Checksum.Value)
 		})
 	}
 
@@ -83,4 +56,36 @@ func getSHAIfFileExists(path string) (string, error) {
 
 	checksum := hash.Sum(nil)
 	return fmt.Sprintf("%x", checksum), nil
+}
+
+func downloadFile(uri, destPath, sha256checksum string) error {
+	sha, _ := getSHAIfFileExists(destPath)
+	if sha == sha256checksum {
+		fmt.Println("checksum matched, so using an existing copy: ", destPath)
+		return nil
+	}
+
+	outFile, err := os.Create(destPath)
+	if err != nil {
+		return err
+	}
+	defer outFile.Close()
+
+	log.Println("starting download: ", uri)
+	resp, err := http.Get(uri)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("error downloading: status code %d", resp.StatusCode)
+	}
+
+	_, err = io.Copy(outFile, resp.Body)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
