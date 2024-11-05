@@ -165,29 +165,30 @@ func StoreCLIPluginFiles(connPkgs []ndchub.ConnectorPackaging) error {
 				return err
 			}
 
-			if cliPlugin, ok := connMetadata.CLIPlugin.(*BinaryInlineCLIPluginDefinition); ok {
-				var cliPluginDownload errgroup.Group
-				for _, p := range cliPlugin.Platforms {
-					cliPluginDownload.Go(func() error {
-						downloadUrl, err := url.Parse(p.URI)
-						if err != nil {
-							return err
-						}
-
-						return downloadFile(
-							p.URI,
-							filepath.Join(
-								cliPluginFolder(cp.Namespace, cp.Name, cp.Version),
-								p.Selector, path.Base(downloadUrl.Path),
-							),
-							p.SHA256,
-						)
-					})
-				}
-				return cliPluginDownload.Wait()
+			cliPlugin, ok := connMetadata.CLIPlugin.(*BinaryInlineCLIPluginDefinition)
+			if !ok {
+				return nil
 			}
 
-			return nil
+			var cliPluginDownload errgroup.Group
+			for _, p := range cliPlugin.Platforms {
+				cliPluginDownload.Go(func() error {
+					downloadUrl, err := url.Parse(p.URI)
+					if err != nil {
+						return err
+					}
+
+					return downloadFile(
+						p.URI,
+						filepath.Join(
+							cliPluginFolder(cp.Namespace, cp.Name, cp.Version),
+							p.Selector, path.Base(downloadUrl.Path),
+						),
+						p.SHA256,
+					)
+				})
+			}
+			return cliPluginDownload.Wait()
 		})
 	}
 	return download.Wait()
