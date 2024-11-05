@@ -14,13 +14,11 @@ import (
 // CLI plugins are packaged according to https://github.com/hasura/ndc-hub/blob/main/rfcs/0011-cli-and-connector-packaging.md
 
 type ConnectorMetadataYAML struct {
-	Version   string              `yaml:"version"`
 	CLIPlugin CLIPluginDefinition `yaml:"cliPlugin"`
 }
 
 func (cmy *ConnectorMetadataYAML) UnmarshalYAML(value *yaml.Node) error {
 	var temp struct {
-		Version   string `yaml:"version"`
 		CLIPlugin struct {
 			Type                              CLIPluginType `yaml:"type"`
 			DockerCLIPluginDefinition         `yaml:",inline"`
@@ -32,7 +30,6 @@ func (cmy *ConnectorMetadataYAML) UnmarshalYAML(value *yaml.Node) error {
 		return err
 	}
 
-	cmy.Version = temp.Version
 	switch temp.CLIPlugin.Type {
 	case Docker:
 		cmy.CLIPlugin = &temp.CLIPlugin.DockerCLIPluginDefinition
