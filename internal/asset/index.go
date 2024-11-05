@@ -14,8 +14,10 @@ const (
 var (
 	DownloadsFolderPath = filepath.Join(AssetFolderPath, "downloads")
 	ExtractsFolderPath  = filepath.Join(AssetFolderPath, "extracts")
-	OutputFolderPath    = filepath.Join(AssetFolderPath, "output")
+	OutputFolderPath    = filepath.Join(AssetFolderPath, "outputs")
 	IndexJsonPath       = filepath.Join(AssetFolderPath, "index.json")
+
+	connectorDefinitionTarballName = "connector-definition.tar.gz"
 )
 
 func connectorVersionFolderForDownload(namespace, name, version string) string {
@@ -23,7 +25,7 @@ func connectorVersionFolderForDownload(namespace, name, version string) string {
 }
 
 func connectorTarballDownloadPath(namespace, name, version string) string {
-	return filepath.Join(connectorVersionFolderForDownload(namespace, name, version), "connector-definition.tar.gz")
+	return filepath.Join(connectorVersionFolderForDownload(namespace, name, version), connectorDefinitionTarballName)
 }
 
 func extractedConnectorVersionFolder(namespace, name, version string) string {
@@ -32,6 +34,10 @@ func extractedConnectorVersionFolder(namespace, name, version string) string {
 
 func outputConnectorVersionFolder(namespace, name, version string) string {
 	return filepath.Join(OutputFolderPath, namespace, name, version)
+}
+
+func connectorTarballOutputPath(namespace, name, version string) string {
+	return filepath.Join(outputConnectorVersionFolder(namespace, name, version), connectorDefinitionTarballName)
 }
 
 func cliPluginFolder(namespace, name, version string) string {

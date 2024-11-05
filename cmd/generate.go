@@ -122,6 +122,11 @@ var generateCmd = &cobra.Command{
 			fmt.Println("error applying cli plugin transforms", err)
 			os.Exit(1)
 		}
+
+		if err = asset.OutputConnectorTarballs(connectorPackaging); err != nil {
+			fmt.Println("error creating connector tarball output", err)
+			os.Exit(1)
+		}
 	},
 }
 
