@@ -92,17 +92,13 @@ type BinaryCLIPluginPlatform struct {
 }
 
 func ApplyCLIPluginTransform(dataServerBaseURL *url.URL, connPkgs []ndchub.ConnectorPackaging) error {
-	// TODO: remove after testing
-	return nil
 	var transform errgroup.Group
 	for _, cp := range connPkgs {
 		transform.Go(func() error {
-			connMetadataFilePath := extractedConnectorVersionFolder(cp.Namespace, cp.Name, cp.Version)
-
-			stat, err := os.Stat(connMetadataFilePath)
-			if err != nil {
-				return err
-			}
+			connMetadataFilePath := filepath.Join(
+				extractedConnectorVersionFolder(cp.Namespace, cp.Name, cp.Version),
+				".hasura-connector", "connector-metadata.yaml",
+			)
 
 			data, err := os.ReadFile(connMetadataFilePath)
 			if err != nil {
@@ -115,26 +111,41 @@ func ApplyCLIPluginTransform(dataServerBaseURL *url.URL, connPkgs []ndchub.Conne
 				return err
 			}
 
-			if cliPlugin, ok := connMetadata.CLIPlugin.(*BinaryInlineCLIPluginDefinition); ok {
-				for idx := 0; idx < len(cliPlugin.Platforms); idx++ {
-					p := cliPlugin.Platforms[idx]
-
-					downloadUrl, err := url.Parse(p.URI)
-					if err != nil {
-						return err
-					}
-
-					cliPlugin.Platforms[idx].URI = dataServerBaseURL.ResolveReference(&url.URL{Path: path.Join(
-						cp.Namespace,
-						cp.Name,
-						cp.Version,
-						p.Selector,
-						path.Base(downloadUrl.Path),
-					)}).String()
-				}
+			cliPlugin, ok := connMetadata.CLIPlugin.(*BinaryInlineCLIPluginDefinition)
+			if !ok {
+				return nil
 			}
 
-			newConnMetadata, err := yaml.Marshal(connMetadata)
+			for idx := 0; idx < len(cliPlugin.Platforms); idx++ {
+				p := cliPlugin.Platforms[idx]
+
+				downloadUrl, err := url.Parse(p.URI)
+				if err != nil {
+					return err
+				}
+
+				cliPlugin.Platforms[idx].URI = dataServerBaseURL.ResolveReference(&url.URL{Path: path.Join(
+					cp.Namespace,
+					cp.Name,
+					cp.Version,
+					p.Selector,
+					path.Base(downloadUrl.Path),
+				)}).String()
+			}
+
+			var connMetadataMap map[string]any
+			err = yaml.Unmarshal(data, &connMetadataMap)
+			if err != nil {
+				return err
+			}
+			connMetadataMap["cliPlugin"] = cliPlugin
+
+			newConnMetadata, err := yaml.Marshal(connMetadataMap)
+			if err != nil {
+				return err
+			}
+
+			stat, err := os.Stat(connMetadataFilePath)
 			if err != nil {
 				return err
 			}
