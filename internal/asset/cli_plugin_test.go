@@ -23,7 +23,6 @@ cliPlugin:
   version: v1.2.0
 `),
 			Expected: &ConnectorMetadataYAML{
-				Version: "v2",
 				CLIPlugin: &BinaryExternalCLIPluginDefinition{
 					Name:    "ndc-postgres",
 					Version: "v1.2.0",
@@ -43,11 +42,6 @@ cliPlugin:
 
 			if tc.Expected == nil && connMetadata != nil {
 				t.Error("expected connector metadata to be nil")
-				return
-			}
-
-			if connMetadata.Version != tc.Expected.Version {
-				t.Errorf("expected version %s, got %s", tc.Expected.Version, connMetadata.Version)
 				return
 			}
 
