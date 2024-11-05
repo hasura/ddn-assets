@@ -22,18 +22,7 @@ func DownloadConnectorTarballs(connPkgs []ndchub.ConnectorPackaging) error {
 		}
 
 		connectorTarball.Go(func() error {
-			var err error
 			tarballPath := connectorTarballDownloadPath(cp.Namespace, cp.Name, cp.Version)
-
-			defer func() {
-				if err != nil {
-					fmt.Println("error while creating: ", tarballPath)
-					return
-				}
-				sha, _ := getSHAIfFileExists(tarballPath)
-				fmt.Printf("successfully wrote: %s (sha256: %s) \n", tarballPath, sha)
-			}()
-
 			return downloadFile(cp.URI, tarballPath, cp.Checksum.Value)
 		})
 	}
@@ -59,6 +48,16 @@ func getSHAIfFileExists(path string) (string, error) {
 }
 
 func downloadFile(uri, destPath, sha256checksum string) error {
+	var err error
+	defer func() {
+		if err != nil {
+			fmt.Println("error while creating: ", destPath)
+			return
+		}
+		sha, _ := getSHAIfFileExists(destPath)
+		fmt.Printf("file: %s (sha256: %s) \n", destPath, sha)
+	}()
+
 	sha, _ := getSHAIfFileExists(destPath)
 	if sha == sha256checksum {
 		fmt.Println("checksum matched, so using an existing copy: ", destPath)

@@ -184,6 +184,7 @@ func StoreCLIPluginFiles(connPkgs []ndchub.ConnectorPackaging) error {
 						)
 					})
 				}
+				return cliPluginDownload.Wait()
 			}
 
 			return nil
