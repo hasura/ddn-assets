@@ -51,6 +51,13 @@ var generateCmd = &cobra.Command{
 			return
 		}
 
+		err = asset.CreateAssetFolders()
+		if err != nil {
+			fmt.Println("error creating asset folders", err)
+			os.Exit(1)
+			return
+		}
+
 		var connectors []asset.Connector
 		var connectorPackaging []ndchub.ConnectorPackaging
 		err = filepath.WalkDir(registryFolder, func(path string, d fs.DirEntry, err error) error {

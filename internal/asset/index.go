@@ -15,10 +15,27 @@ var (
 	DownloadsFolderPath = filepath.Join(AssetFolderPath, "downloads")
 	ExtractsFolderPath  = filepath.Join(AssetFolderPath, "extracts")
 	OutputFolderPath    = filepath.Join(AssetFolderPath, "outputs")
-	IndexJsonPath       = filepath.Join(AssetFolderPath, "index.json")
+	IndexJsonPath       = filepath.Join(OutputFolderPath, "index.json")
 
 	connectorDefinitionTarballName = "connector-definition.tar.gz"
 )
+
+func CreateAssetFolders() error {
+	folders := []string{
+		DownloadsFolderPath,
+		ExtractsFolderPath,
+		OutputFolderPath,
+	}
+
+	for _, folder := range folders {
+		err := os.MkdirAll(folder, 0777)
+		if err != nil {
+			return fmt.Errorf("error creating folder: %s %w", folder, err)
+		}
+	}
+
+	return nil
+}
 
 func connectorVersionFolderForDownload(namespace, name, version string) string {
 	return filepath.Join(DownloadsFolderPath, namespace, name, version)
